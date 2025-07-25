@@ -60,7 +60,7 @@ mediadaten_analyse/
 
 ## Autor
 Hristofor Hrisoskulov
-📧 h.hrisoskulov@arcor.de
+GitHub: Fori78
 
 
 
