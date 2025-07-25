@@ -1,0 +1,5 @@
+# MANIFEST.in
+
+include mediadaten_analyse/**/*.xlsx
+include mediadaten_analyse/**/*.json
+include mediadaten_analyse/**/*.db

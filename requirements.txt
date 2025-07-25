@@ -1,0 +1,7 @@
+pandas
+matplotlib
+openpyxl
+seaborn
+sqlite3
+argparse
+json

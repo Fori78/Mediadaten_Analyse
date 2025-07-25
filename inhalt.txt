@@ -1,0 +1,870 @@
+Lass uns jetzt kurz eine Zwischenzusammenfassung machen. Ich habe folgende Ordnerstruktur (modularisch aufgebaut, ignoriere den Ordner _alt): Screenshot im Anhang.
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse
+.gitignore:
+# .gitignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.env/
+.venv/
+venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints
+
+# VSCode & IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Daten & Outputs
+*.xlsx
+*.db
+*.json
+data/ (Entferne ggf. data/ aus .gitignore, wenn du Beispiel-Input teilen möchtest.)
+
+MANIFEST.in.py:
+# MANIFEST.in
+
+include mediadaten_analyse/**/*.xlsx
+include mediadaten_analyse/**/*.json
+include mediadaten_analyse/**/*.db
+
+pyproject.toml: 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediadaten-analyse"
+version = "0.1.0"
+description = "Analyse- und Visualisierungstool für Mediadaten mit Credibility Scoring"
+authors = [
+    { name = "Hristofor Hrisoskulov", email = "h.hrisoskulov@arcor.de" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+dependencies = [
+    "pandas",
+    "matplotlib",
+    "openpyxl",
+    "numpy"
+]
+
+[project.scripts]
+mediadaten-analyse = "mediadaten_analyse.main:main"
+
+[tool.setuptools]
+packages = [
+    "mediadaten_analyse",
+    "mediadaten_analyse.analyse",
+    "mediadaten_analyse.visualisierung"
+]
+
+[tool.setuptools.package-data]
+mediadaten_analyse = ["**/*.xlsx", "**/*.json", "**/*.db"]
+
+README.md: 
+# README.md
+
+# Mediadaten Analyse
+
+Ein Analyse- und Visualisierungstool für Mediadaten, z. B. zur Bewertung von Marken oder CEOs mit Credibility Scoring.
+
+## Features
+
+- Automatische Datenzusammenführung (Merge)
+- Credibility Scoring (konfigurierbar)
+- Zeitreihen-Visualisierung nach Brand oder CEO
+- Piecharts für Sentiment
+- Export als Excel-Datei
+- CLI-Unterstützung mit Argumenten
+
+## Nutzung
+
+bash
+# Lokale Ausführung
+python -m mediadaten_analyse --dimension Brand
+python -m mediadaten_analyse --dimension CEO --no-plot
+
+## Installation
+
+git clone https://github.com/dein-nutzername/mediadaten-analyse.git
+cd mediadaten-analyse
+pip install .
+
+## Projektstruktur
+mediadaten_analyse/
+│
+├── mediadaten_analyse/
+│   ├── analyse/
+│   ├── visualisierung/
+│   ├── __init__.py
+│   └── main.py
+├── data/  # Excel-Dateien hier
+├── setup.py
+├── pyproject.toml
+├── MANIFEST.in
+└── README.md
+
+## Autor
+Hristofor Hrisoskulov
+📧 h.hrisoskulov@arcor.de
+
+
+
+```bash
+git add README.md
+git commit -m "README hinzugefügt"
+git push
+
+setup.py:
+# setup.py
+
+from setuptools import setup, find_packages
+
+setup(
+    name='mediadaten_analyse',
+    version='0.1',
+    packages=find_packages(),
+    install_requires=[
+        "pandas", "matplotlib", "numpy", "openpyxl"  # was eben gebraucht ist
+    ],
+    author="Hristofor Hrisoskulov",
+    description="Analyse und Visualisierung von Mediadaten mit Credibility Scoring.",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ],
+    entry_points={
+       'console_scripts': [
+        'mediadaten-analyse=mediadaten_analyse.main:main',
+        'mediadaten-query=mediadaten_analyse.tools.query_tool:main'
+    ]
+    },
+)
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\data
+Ausgangsdateien und credibility_score
+
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\mediadaten_analyse
+
+# mediadaten_analyse/__init__.py
+
+# __main__.py
+
+from .main import main
+
+if __name__ == "__main__":
+    main()
+
+main.py:
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul  8 13:56:52 2025
+
+@author: Hykki
+"""
+# main.py 
+
+import argparse
+import os
+import sys
+
+# Set working directory to the script location
+current_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(current_dir)
+
+# Add project root to sys.path
+sys.path.insert(0, current_dir)
+
+# Eigene Module importieren
+from mediadaten_analyse.analyse.analyse import MediaDataProcessor
+from mediadaten_analyse.analyse.config_loader import load_credibility_scores
+from mediadaten_analyse.visualisierung.visualizer import Visualizer
+from mediadaten_analyse.analyse.database import save_to_sqlite
+
+
+class MainApp:
+    def __init__(self, data_dir, analyse_dimension="Brand"):
+        self.data_dir = data_dir
+        self.analyse_dimension = analyse_dimension
+        self.df = None
+
+    def load_and_process(self):
+        processor = MediaDataProcessor(self.data_dir)
+        self.df = processor.load()
+
+    def export_data(self, filename="merged_mediadaten_FINAL_EXPORT.xlsx"):
+        if self.df is None:
+            raise RuntimeError("Daten wurden noch nicht geladen.")
+        output_path = os.path.join(self.data_dir, filename)
+        self.df.to_excel(output_path, index=False)
+        print(f"Exportiert nach: {output_path}")
+
+    def visualize(self):
+        if self.df is None:
+            raise RuntimeError("Daten wurden noch nicht geladen.")
+        viz = Visualizer(self.df)
+        viz.plot_monthly_media_reach(analyse_dimension=self.analyse_dimension)
+
+    def show_sentiment(self, analyse_dimension=None):
+        viz = Visualizer(self.df)
+        dim = analyse_dimension if analyse_dimension is not None else self.analyse_dimension
+        viz.plot_sentiment_piecharts(analyse_dimension=dim)
+        
+    def show_media_branch_distribution(self):
+        viz = Visualizer(self.df)
+        viz.plot_media_branch_distribution()
+    
+    def save_to_sqlite(self, db_path="mediadaten.db"):
+        if self.df is None:
+            raise ValueError("Keine Daten vorhanden.")
+        save_to_sqlite(self.df)
+    
+    def run(self, export=True, show_plot=True):
+        self.load_and_process()
+        self.save_to_sqlite()
+        if export:
+            self.export_data()
+        if show_plot:
+            self.visualize()
+            self.show_sentiment(analyse_dimension="Brand")
+            self.show_sentiment(analyse_dimension="CEO")
+            self.show_media_branch_distribution()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Mediadaten Analyse Tool")
+    parser.add_argument(
+        "--dimension",
+        type=str,
+        default="Brand",
+        help="Analyse-Dimension (z. B. Brand, CEO, Media Branch)"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data")),
+        help="Pfad zum Datenordner (default: ../data)"
+    )
+    parser.add_argument(
+        "--no-export",
+        action="store_true",
+        help="Deaktiviere den Datenexport"
+    )
+    parser.add_argument(
+        "--no-plot",
+        action="store_true",
+        help="Deaktiviere das Anzeigen von Visualisierungen"
+    )
+
+    args = parser.parse_args()
+
+    app = MainApp(
+        data_dir=args.data_dir,
+        analyse_dimension=args.dimension
+    )
+    app.run(
+        export=not args.no_export,
+        show_plot=not args.no_plot
+    )
+
+
+if __name__ == "__main__":
+    main()
+    
+
+# Beispielaufrufe im Terminal:
+
+# Starten im Projektverzeichnis
+    # cd "C:\Users\Hykki\verzeichnis\Mediadaten_Analyse" - Beispielordner
+    
+# Standard (wie vorher)
+# python -m mediadaten_analyse
+
+# Mit CEO-Analyse
+# python -m mediadaten_analyse --dimension CEO
+
+# Nur laden, kein Plot, kein Export
+# python -m mediadaten_analyse --no-export --no-plot
+
+# Mit anderem Datenverzeichnis
+# python -m mediadaten_analyse --data-dir "C:/Users/Hykki/Dokumente/andere_daten"
+
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\mediadaten_analyse\analyse
+analyse/__init__.py: 
+from .analyse import MediaDataProcessor
+from .config_loader import load_credibility_scores
+
+analyse.py:
+'''
+Q-Daten (BMW & Mercedes-Benz) automatisch (auch für künftige Quartale und Marken) einlesen und zusammenführen.
+In den Dateien eine neue Spalte "Brand" hinzufügen, das aus dem Dateinamen extrahiert wird.
+Gruppiert Medien grob in Social Media und Online News.
+In den Dateien eine neue Spalte "Quartal", "Day", "Month", Year" aus "Published" hinzufügen
+    Optional: fallback für Quartal aus Dateinamen, falls kein valides Datum.
+Code so vorbereiten, dass Q2/Q3 später ergänzt werden können.
+EMV und Media Reach berechnen
+    EMV = (engagement + 0.1 * media_reach) * sentiment_factor
+    MediaReach = (Views if vorhanden else Reach) * CredibilityScore
+
+Warum OOP hier sinnvoll ist
+Mit OOP kannst du:
+    den Zustand (z. B. data_dir, DataFrames) kapseln,
+    verwandte Funktionen methodisch bündeln (z. B. als self.load_data() statt load_all_mediadaten(...)),
+    später leichter erweitern (z. B. für weitere Analysen, Reports, Validierungen),
+    mehr Wiederverwendbarkeit und Testbarkeit erreichen.
+
+Wir bauen eine Klasse MediaDataProcessor, die alles rund um Laden, Verarbeiten und Berechnen kapselt.
+'''
+
+# analyse.py
+
+import pandas as pd
+import os
+import glob
+import re
+from mediadaten_analyse.analyse.config_loader import load_credibility_scores
+import sqlite3
+
+class MediaDataProcessor:
+    sentiment_map = {
+        "positiv": 1.0,
+        "neutral": 0.7,
+        "negativ": -1.0
+    }
+
+    def __init__(self, data_dir):
+        self.data_dir = data_dir
+        self.df = pd.DataFrame()
+        self.credibility_scores = {}
+
+    def load(self):
+        self.df = self._load_all_mediadaten()
+        self.credibility_scores = load_credibility_scores(
+            os.path.join(self.data_dir, "credibility_scores.xlsx")
+        )
+        self._calculate_metrics()
+        return self.df
+    
+    # Lädt und merged alle mediadaten_*.xlsx-Dateien aus dem angegebenen Verzeichnis.
+    # Ergänzt automatisch Brand, Datumskomponenten & Quartal.
+    def _load_all_mediadaten(self):
+        pattern = os.path.join(self.data_dir, "[Mm]ediadaten_*.xlsx")
+        file_paths = glob.glob(pattern)
+
+        if not file_paths:
+            raise FileNotFoundError("Keine passenden Dateien gefunden.")
+
+        dfs = []
+        for path in file_paths:
+            brand = self._extract_brand_from_filename(path)
+            df = pd.read_excel(path)
+            if df.empty:
+                continue
+
+            df["Brand"] = brand
+            df["Published"] = pd.to_datetime(df["Published"], errors="coerce")
+            df["Year"] = df["Published"].dt.year
+            df["Month"] = df["Published"].dt.month
+            df["Day"] = df["Published"].dt.day
+            df["Quartal"] = (
+                "Q" + ((df["Month"] - 1) // 3 + 1).astype(str) + "_" + df["Year"].astype(str)
+            )
+            '''
+            df["Month"] enthält die Monatszahl aus dem Datum, z. B. 1 für Januar.
+            "Q" + ... : Baut den Quartals-String auf, z. B. "Q1"
+            (df["Month"] - 1) // 3: Quartalsberechnung
+            +1 Echte Quratale erhalten: Q1.
+            .astype(str) wandelt die Quartalszahl (1, 2, …) in einen String um, 
+                damit sie in Text verkettet werden kann.
+            + "_" + df["Year"].astype(str): Hängt noch das Jahr dran, also "Q1_2025"
+            '''
+
+            dfs.append(df)
+
+        return pd.concat(dfs, ignore_index=True)
+            
+    # In den Dateien eine neue Spalte "Brand" hinzufügen, das aus dem Dateinamen extrahiert wird.
+    def _extract_brand_from_filename(self, filename):
+        name = os.path.splitext(os.path.basename(filename))[0]
+        match = re.match(r"mediadaten_(.+?)_Q\d{1,2}_\d{4}", name)
+        return match.group(1) if match else "Unbekannt"
+
+    def _get_sentiment_factor(self, sentiment):
+        return self.sentiment_map.get(str(sentiment).lower(), 0.7)
+    
+    '''
+    Berechnungen: EMV, Media Reach
+    '''
+    def _calculate_metrics(self):
+        self.df["Media Reach"] = self.df.apply(self._calculate_media_reach, axis=1)
+        self.df["EMV"] = self.df.apply(self._calculate_emv, axis=1)
+        self.df["Media Branch"] = self.df["Medium"].apply(self._map_media_branch)
+    
+    def _map_media_branch(self, medium):
+        """
+        Gruppiert Medien grob in Social Media und Online News.
+        Alles, was nicht als Social Media erkannt wird, fällt automatisch unter Online News.
+        """
+        medium = str(medium).lower()
+        if any(x in medium for x in ["x", "twitter", "facebook", "instagram", "linkedin", "tiktok", "youtube"]):
+           return "Social Media"
+        else:
+           return "Online News"
+    
+    def _calculate_media_reach(self, row):
+        value = row.get("Views") if pd.notna(row.get("Views")) else row.get("Reach")
+        medium = str(row.get("Medium")).lower()
+        credibility = self.credibility_scores.get(medium, 1)
+        return value * credibility if pd.notna(value) else 0
+
+    def _calculate_emv(self, row):
+        likes = row.get("Likes") or 0
+        shares = row.get("Shares") or 0
+        comments = row.get("Comments") or 0
+        engagement = likes + shares + comments
+
+        sentiment_factor = self._get_sentiment_factor(row.get("Sentiment"))
+        media_reach = row.get("Media Reach") or 0
+        return (engagement + 0.1 * media_reach) * sentiment_factor
+
+        
+        
+
+
+
+"""
+Funktionalität	             OOP (neu)
+Wiederverwendbarkeit	     Hoch
+Erweiterbarkeit	             mit Klassenvererbung möglich
+Testbarkeit	                 Methoden einzeln testbar
+Lesbarkeit	                 klar strukturierte Objekte
+Zustand behalten	         automatisch über self
+"""
+
+config_loader:
+import os
+import pandas as pd
+import json
+import sqlite3
+
+
+def load_credibility_scores(path):
+    """
+    Lädt die Credibility Scores aus verschiedenen Formaten:
+    - .xlsx  → Excel
+    - .csv   → CSV-Datei
+    - .json  → JSON
+    - .db    → SQLite (Tabelle: credibility_scores mit Spalten Medium & Score)
+    Gibt ein dict {medium_name: score}.
+    Einfach austauschbar oder erweiterbar ohne Codeänderungen
+    """
+    
+    if not os.path.exists(path): 
+        raise FileNotFoundError(f"Datei nicht gefunden: {path}")
+    
+    ext = os.path.splitext(path)[1].lower()
+    
+          
+    if ext == ".xlsx":
+        df = pd.read_excel(path)
+    elif ext == ".csv":
+        df = pd.read_csv(path)
+    elif ext == ".json":
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {k.lower(): v for k, v in data.items()}
+    elif ext == ".db":
+        conn = sqlite3.connect(path)
+        df = pd.read_sql_query("SELECT Medium, Score FROM credibility_scores", conn)
+        conn.close()
+    else:
+        raise ValueError(f"nicht unterstütztes Format: {ext}")
+    
+    # Gemeinsame Verarbeitung für Excel/CSV/DB
+    if "Medium" not in df.columns or "Score" not in df.columns:
+        raise ValueError("Die Datei muss die Spalten 'Medium' und 'Score' enthalten.")
+    
+    return dict(zip(df["Medium"].str.lower(), df["Score"]))
+
+database.py:
+# database.py
+
+import os
+import sqlite3
+import pandas as pd
+from typing import Optional
+
+def _get_default_db_path() -> str:
+    """Ermittelt den Standardspeicherpfad für die SQLite-Datenbank im outputs-Ordner."""
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, "mediadaten.db")
+
+def save_to_sqlite(df: pd.DataFrame, db_path: Optional[str] = None, table_name: str = "mediadaten") -> None:
+    """Speichert ein DataFrame in eine SQLite-Datenbank."""
+    if df.empty: 
+        raise ValueError("Keine Daten zum Speichern vorhanden.")
+
+    if db_path is None:
+        db_path = _get_default_db_path()
+    
+    conn = sqlite3.connect(db_path)
+    try:
+        df.to_sql(table_name, conn, if_exists="replace", index=False)
+        print(f"Datenbank gespeichert unter: {db_path}")
+    finally: 
+        conn.close()
+
+def load_from_sqlite(db_path: Optional[str] = None, table_name: str = "mediadaten") -> pd.DataFrame:
+    """Lädt ein gesamtes DataFrame aus einer SQLite-Datenbank."""
+    if db_path is None:
+        db_path = _get_default_db_path()
+    
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Die Datenbankdatei wurde nicht gefunden: {db_path}")
+    
+    conn = sqlite3.connect(db_path)
+    try:
+        df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+        print(f"Daten aus {table_name} geladen aus: {db_path}")
+        return df
+    finally:
+        conn.close()
+        
+def run_query(query: str, db_path: Optional[str] = None) -> pd.DataFrame:
+    """Führt eine SQL-Abfrage auf der SQLite-Datenbank aus und gibt ein DataFrame zurück."""
+    if db_path is None:
+        db_path = _get_default_db_path()
+    
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Die Datenbankdatei wurde nicht gefunden: {db_path}")
+    
+    conn = sqlite3.connect(db_path)
+    try:
+        df = pd.read_sql_query(query, conn)
+        print(f"Abfrage erfolgreich ausgeführt:\n{query.strip()}")
+        return df
+    finally:
+        conn.close()
+
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\mediadaten_analyse\tools
+
+query_tool:
+# query_tool.py
+
+import sys
+import os
+import argparse
+import pandas as pd
+from mediadaten_analyse.analyse.database import run_query
+
+# Projektpfad einbinden
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+# Output-Verzeichnis vorbereiten
+OUTPUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "outputs"))
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def save_to_excel(df: pd.DataFrame, filename: str):
+    path = os.path.join(OUTPUT_DIR, filename)
+    df.to_excel(path, index=False)
+    print(f"Ergebnis gespeichert unter: {path}")
+
+def get_filtered_posts(brand=None, quarter=None, sentiment=None, min_reach=None,
+                       media_branch=None, ceo=None, engagement=None,
+                       medium=None, country=None) -> pd.DataFrame:
+    conditions = []
+
+    if brand:
+        conditions.append(f"LOWER(Brand) LIKE LOWER('%{brand}%')")
+    if quarter:
+        conditions.append(f"Quartal = '{quarter}'")
+    if sentiment:
+        conditions.append(f"Sentiment = '{sentiment}'")
+    if min_reach:
+        conditions.append(f"[Media Reach] > {min_reach}")
+    if media_branch:
+        conditions.append(f"LOWER([Media Branch]) LIKE LOWER('%{media_branch}%')")
+    if ceo:
+        conditions.append(f"LOWER(CEO) LIKE LOWER('%{ceo}%')")
+    if engagement:
+        conditions.append(f"Engagement > {engagement}")
+    if medium:
+        conditions.append(f"LOWER(Medium) LIKE LOWER('%{medium}%')")
+    if country:
+        conditions.append(f"LOWER(Country) LIKE LOWER('%{country}%')")
+
+    where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+    query = f"""
+        SELECT * FROM mediadaten
+        WHERE {where_clause}
+    """
+    df = run_query(query)
+
+    filename_parts = ["filtered"]
+    for val in [brand, quarter, sentiment, min_reach, media_branch, ceo, engagement, medium, country]:
+        if val:
+            filename_parts.append(str(val).replace(" ", "_"))
+    
+    filename = "_".join(filename_parts) + ".xlsx"
+    save_to_excel(df, filename)
+    return df
+
+def get_emv_trend_for_brand(brand: str) -> pd.DataFrame:
+    query = f"""
+        SELECT Quartal, SUM(EMV) AS Gesamt_EMV
+        FROM mediadaten
+        WHERE Brand = '{brand}'
+        GROUP BY Quartal
+        ORDER BY Quartal
+    """
+    df = run_query(query)
+    save_to_excel(df, f"emv_trend_{brand}.xlsx")
+    return df
+
+# Hauptprogramm
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Datenbankabfragen auf mediadaten.db")
+
+    parser.add_argument("--mode", type=str, required=True, choices=["filtered", "emv_trend", "negative_posts"],
+                        help="Modus der Abfrage: filtered, emv_trend, negative_posts")
+    parser.add_argument("--brand", type=str, help="Marke, z. B. 'BMW'")
+    parser.add_argument("--quarter", type=str, help="Quartal, z. B. 'Q2_2025'")
+    parser.add_argument("--sentiment", type=str, help="Sentiment: positiv, neutral, negativ")
+    parser.add_argument("--min-reach", type=int, help="Minimale Media Reach")
+    parser.add_argument("--media-branch", type=str, help="Medienbranche")
+    parser.add_argument("--ceo", type=str, help="CEO-Name")
+    parser.add_argument("--engagement", type=float, help="Mindest-Engagement")
+    parser.add_argument("--medium", type=str, help="Medium")
+    parser.add_argument("--country", type=str, help="Land")
+
+    args = parser.parse_args()
+
+    if args.mode == "filtered":
+        get_filtered_posts(
+            brand=args.brand,
+            quarter=args.quarter,
+            sentiment=args.sentiment,
+            min_reach=args.min_reach,
+            media_branch=args.media_branch,
+            ceo=args.ceo,
+            engagement=args.engagement,
+            medium=args.medium,
+            country=args.country
+        )
+    elif args.mode == "emv_trend":
+        if not args.brand:
+            parser.error("--brand ist erforderlich für Modus 'emv_trend'")
+        get_emv_trend_for_brand(args.brand)
+    elif args.mode == "negative_posts":
+        if not args.brand or not args.quarter:
+            parser.error("--brand und --quarter sind erforderlich für Modus 'negative_posts'")
+        get_filtered_posts(
+            brand=args.brand,
+            quarter=args.quarter,
+            sentiment="negativ"
+        )
+
+
+
+
+# Beispielaufrufe im Terminal
+
+# Im richtigen Ordner:
+# cd C:\Users\Hykki\verzeichnis\Mediadaten_Analyse
+# set PYTHONPATH=.
+
+# Für negative Posts
+# python mediadaten_analyse\tools\query_tool.py --brand BMW --quarter Q1_2025 --mode negative_posts
+
+# Für EMV-Trend
+# python mediadaten_analyse\tools\query_tool.py --brand BrandX --mode emv_trend
+
+# Nur BMW, Quartal Q2_2025, Sentiment negativ
+# python mediadaten_analyse\tools\query_tool.py --mode filtered --brand BMW --quarter Q2_2025 --sentiment negativ
+
+# Filter mit Mindestreichweite
+# python mediadaten_analyse\tools\query_tool.py --mode filtered --brand BMW --min-reach 20000
+
+# EMV-Trend
+# python mediadaten_analyse\tools\query_tool.py --mode emv_trend --brand BMW
+
+# Klassisch: negative Posts
+# python mediadaten_analyse\tools\query_tool.py --mode negative_posts --brand BMW --quarter Q2_2025
+
+# Nur nach Marke filtern
+# python mediadaten_analyse/tools/query_tool.py --mode filtered --brand BMW
+
+# Nach Marke, CEO und Land
+# python mediadaten_analyse/tools/query_tool.py --mode filtered --brand BMW --ceo "Oliver Zipse" --country Germany
+
+# Alle negativen Beiträge von Tesla im Q2
+# python mediadaten_analyse/tools/query_tool.py --mode filtered --brand Tesla --quarter Q2_2025 --sentiment negativ
+
+# Hohe Reichweite & Engagement in der Automobilbranche
+# python mediadaten_analyse/tools/query_tool.py --mode filtered --media-branch "Automotive" --min-reach 50000 --engagement 0.05
+
+# Nach Medium und Land
+# python mediadaten_analyse/tools/query_tool.py --mode filtered --medium "YouTube" --country USA
+
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\mediadaten_analyse\visualisierung
+# mediadaten_analyse/__init__.py
+
+# __main__.py
+
+from .main import main
+
+if __name__ == "__main__":
+    main()
+
+main.py:
+# main.py 
+
+import argparse
+import os
+import sys
+
+# Set working directory to the script location
+current_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(current_dir)
+
+# Add project root to sys.path
+sys.path.insert(0, current_dir)
+
+# Eigene Module importieren
+from mediadaten_analyse.analyse.analyse import MediaDataProcessor
+from mediadaten_analyse.analyse.config_loader import load_credibility_scores
+from mediadaten_analyse.visualisierung.visualizer import Visualizer
+from mediadaten_analyse.analyse.database import save_to_sqlite
+
+
+class MainApp:
+    def __init__(self, data_dir, analyse_dimension="Brand"):
+        self.data_dir = data_dir
+        self.analyse_dimension = analyse_dimension
+        self.df = None
+
+    def load_and_process(self):
+        processor = MediaDataProcessor(self.data_dir)
+        self.df = processor.load()
+
+    def export_data(self, filename="merged_mediadaten_FINAL_EXPORT.xlsx"):
+        if self.df is None:
+            raise RuntimeError("Daten wurden noch nicht geladen.")
+        output_path = os.path.join(self.data_dir, filename)
+        self.df.to_excel(output_path, index=False)
+        print(f"Exportiert nach: {output_path}")
+
+    def visualize(self):
+        if self.df is None:
+            raise RuntimeError("Daten wurden noch nicht geladen.")
+        viz = Visualizer(self.df)
+        viz.plot_monthly_media_reach(analyse_dimension=self.analyse_dimension)
+
+    def show_sentiment(self, analyse_dimension=None):
+        viz = Visualizer(self.df)
+        dim = analyse_dimension if analyse_dimension is not None else self.analyse_dimension
+        viz.plot_sentiment_piecharts(analyse_dimension=dim)
+        
+    def show_media_branch_distribution(self):
+        viz = Visualizer(self.df)
+        viz.plot_media_branch_distribution()
+    
+    def save_to_sqlite(self, db_path="mediadaten.db"):
+        if self.df is None:
+            raise ValueError("Keine Daten vorhanden.")
+        save_to_sqlite(self.df)
+    
+    def run(self, export=True, show_plot=True):
+        self.load_and_process()
+        self.save_to_sqlite()
+        if export:
+            self.export_data()
+        if show_plot:
+            self.visualize()
+            self.show_sentiment(analyse_dimension="Brand")
+            self.show_sentiment(analyse_dimension="CEO")
+            self.show_media_branch_distribution()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Mediadaten Analyse Tool")
+    parser.add_argument(
+        "--dimension",
+        type=str,
+        default="Brand",
+        help="Analyse-Dimension (z. B. Brand, CEO, Media Branch)"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data")),
+        help="Pfad zum Datenordner (default: ../data)"
+    )
+    parser.add_argument(
+        "--no-export",
+        action="store_true",
+        help="Deaktiviere den Datenexport"
+    )
+    parser.add_argument(
+        "--no-plot",
+        action="store_true",
+        help="Deaktiviere das Anzeigen von Visualisierungen"
+    )
+
+    args = parser.parse_args()
+
+    app = MainApp(
+        data_dir=args.data_dir,
+        analyse_dimension=args.dimension
+    )
+    app.run(
+        export=not args.no_export,
+        show_plot=not args.no_plot
+    )
+
+
+if __name__ == "__main__":
+    main()
+    
+
+# Beispielaufrufe im Terminal:
+
+# Starten im Projektverzeichnis
+    # cd "C:\Users\Hykki\verzeichnis\Mediadaten_Analyse" - Beispielordner
+    
+# Standard (wie vorher)
+# python -m mediadaten_analyse
+
+# Mit CEO-Analyse
+# python -m mediadaten_analyse --dimension CEO
+
+# Nur laden, kein Plot, kein Export
+# python -m mediadaten_analyse --no-export --no-plot
+
+# Mit anderem Datenverzeichnis
+# python -m mediadaten_analyse --data-dir "C:/Users/Hykki/Dokumente/andere_daten"
+
+Daten in C:\Users\Hykki\verzeichnis\Mediadaten_Analyse\outputs
+hier kommen die fertigen Dateien rein
+
+Also ist dies als Modul komplett? Ich würde das in GitHub hochladen. Sind irgendwo Sachen, die hinzugefügt werden? Oder siehst du was fehlt? Bitte falls ja Schritt für Schritt erklären. Wenn nichts fehlt, bitte eine ausführliche Anweiung zum Hochladen in GitHub. Hierzu benötige ich auch einen Zugang? 
+

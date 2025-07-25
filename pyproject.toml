@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediadaten-analyse"
+version = "0.1.0"
+description = "Analyse- und Visualisierungstool für Mediadaten mit Credibility Scoring"
+authors = [
+    { name = "Hristofor Hrisoskulov", email = "h.hrisoskulov@arcor.de" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+dependencies = [
+    "pandas",
+    "matplotlib",
+    "openpyxl",
+    "numpy"
+]
+
+[project.scripts]
+mediadaten-analyse = "mediadaten_analyse.main:main"
+
+[tool.setuptools]
+packages = [
+    "mediadaten_analyse",
+    "mediadaten_analyse.analyse",
+    "mediadaten_analyse.visualisierung"
+]
+
+[tool.setuptools.package-data]
+mediadaten_analyse = ["**/*.xlsx", "**/*.json", "**/*.db"]
