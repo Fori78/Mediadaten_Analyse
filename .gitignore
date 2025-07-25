@@ -30,11 +30,9 @@ dist/
 *.egg-info/
 
 # Daten & Outputs
-outputs/ (Entferne ggf. data/ aus .gitignore, wenn du Beispiel-Input teilen möchtest.)
 *.xlsx
 *.db
 *.json
-data/ (Entferne ggf. data/ aus .gitignore, wenn du Beispiel-Input teilen möchtest.)
 
 # Logs
 *.log
