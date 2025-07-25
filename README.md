@@ -2,6 +2,8 @@
 
 # Mediadaten Analyse
 
+Dieses Projekt ist mein erstes Projekt in Python und dient sowohl Lern- als auch Analysezwecken.
+
 Ein Analyse-, Filterung- und Visualisierungstool für Mediadaten, 
 z. B. zur Bewertung von Marken oder CEOs mit Credibility Scoring.
 
@@ -29,13 +31,19 @@ python mediadaten_analyse/tools/query_tool.py --mode filtered --brand BMW --quar
 python mediadaten_analyse/tools/query_tool.py --mode filtered --brand Tesla --quarter Q2_2025 --sentiment negativ
 
 # EMV-Trend für BMW
-python mediadaten_analyse/tools/query_tool.py --mode emv_trend --brand BMW
+python Mediadaten_Analyse/tools/query_tool.py --mode filtered --brand BMW --quarter Q2_2025
+
+# Nur negative Posts von Tesla im Q2 2025:
+python Mediadaten_Analyse/tools/query_tool.py --mode filtered --brand Tesla --quarter Q2_2025 --sentiment negativ
+
+# EMV-Trend für BMW
+python Mediadaten_Analyse/tools/query_tool.py --mode emv_trend --brand BMW
 
 
 ## Installation
 
-git clone https://github.com/dein-nutzername/mediadaten-analyse.git
-cd mediadaten-analyse
+git clone https://github.com/dein-nutzername/Mediadaten_Analyse.git
+cd Mediadaten_Analyse
 pip install .
 
 ## Virtuelle Umgebung
@@ -59,7 +67,7 @@ mediadaten_analyse/
 
 ## Autor
 Hristofor Hrisoskulov
-📧 h.hrisoskulov@arcor.de
+GitHub: Fori78
 
 
 
